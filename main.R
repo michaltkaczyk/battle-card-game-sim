@@ -1,67 +1,85 @@
-deck <- sample(rep(1:13, 4))
-
-cards <- list(
-    cards_1 = deck[1:26],
-    cards_2 = deck[27:52],
-    stash_1 = c(),
-    stash_2 = c(),
-    winner = 0,
-    counter = 0)
-
-report_victory <- function(cards) {
-    cat("Player", cards$winner, "wins the game after", cards$counter, "rounds!\n") 
-}
-
-play_cards <- function(cards) {
-    if (cards$winner == 0) {
-        if (cards$cards_1[1] > cards$cards_2[1]) {
-            if (length(cards$cards_2) == 1) {
-                cards$winner <- 1
-                report_victory(cards)
+play_game <- function(game) {
+    if (game$winner == 0) {
+        if (game$cards_1[1] > game$cards_2[1]) {
+            if (length(game$cards_2) == 1) {
+                game$winner <- 1
             } else {
-                cat("Player 1 wins:", cards$cards_1[1], "beats", cards$cards_2[1], "\n")
-                cards$counter <- cards$counter + 1
-                cards$cards_1 <- c(cards$cards_1[-1], cards$stash_1, cards$stash_2, cards$cards_1[1], cards$cards_2[1])
-                cards$cards_2 <- cards$cards_2[-1]
-                cards$stash_1 <- c()
-                cards$stash_2 <- c()
+                game$counter <- game$counter + 1
+                game$cards_1 <- c(game$cards_1[-1], game$stash_1, game$stash_2, game$cards_1[1], game$cards_2[1])
+                game$cards_2 <- game$cards_2[-1]
+                game$stash_1 <- c()
+                game$stash_2 <- c()
             }
         } else {
-            if (cards$cards_1[1] < cards$cards_2[1]) {
-                if (length(cards$cards_1) == 1) {
-                    cards$winner <- 2
-                    report_victory(cards)
+            if (game$cards_1[1] < game$cards_2[1]) {
+                if (length(game$cards_1) == 1) {
+                    game$winner <- 2
                 } else {
-                    cat("Player 2 wins:", cards$cards_2[1], "beats", cards$cards_1[1], "\n")
-                    cards$counter <- cards$counter + 1
-                    cards$cards_2 <- c(cards$cards_2[-1], cards$stash_2, cards$stash_1, cards$cards_2[1], cards$cards_1[1])
-                    cards$cards_1 <- cards$cards_1[-1]
-                    cards$stash_1 <- c()
-                    cards$stash_2 <- c()
+                    game$counter <- game$counter + 1
+                    game$cards_2 <- c(game$cards_2[-1], game$stash_2, game$stash_1, game$cards_2[1], game$cards_1[1])
+                    game$cards_1 <- game$cards_1[-1]
+                    game$stash_1 <- c()
+                    game$stash_2 <- c()
                 }
             } else {
-                cat("Battle!\n")
-                if (length(cards$cards_2) == 1) {
-                    cards$winner <- 1
-                    report_victory(cards)
+                if (length(game$cards_2) == 1) {
+                    game$winner <- 1
                 } else {
-                    if (length(cards$cards_1) == 1) {
-                        cards$winner <- 2
-                        report_victory(cards)
+                    if (length(game$cards_1) == 1) {
+                        game$winner <- 2
                     } else {
-                        cards$stash_1 <- c(cards$stash_1, cards$cards_1[1:2])
-                        cards$stash_2 <- c(cards$stash_2, cards$cards_2[1:2])
-                        cards$cards_1 <- cards$cards_1[-(1:2)]
-                        cards$cards_2 <- cards$cards_2[-(1:2)]
-                        play_cards(cards)
+                        game$stash_1 <- c(game$stash_1, game$cards_1[1:2])
+                        game$stash_2 <- c(game$stash_2, game$cards_2[1:2])
+                        game$cards_1 <- game$cards_1[-(1:2)]
+                        game$cards_2 <- game$cards_2[-(1:2)]
+                        
+                        if (length(game$cards_1) == 0) {
+                            game$winner <- 2
+                        } else {
+                            if (length(game$cards_2) == 0) {
+                                game$winner <- 1
+                            } else {
+                                play_game(game)
+                            }
+                        }
                     }
                 }
             }
         }
     }
-    return(cards)
+    return(game)
 }
 
-for (rounds in 1:1000) {
-    cards <- play_cards(cards)
+run_simulation <- function(sim_iterations) {
+    
+    sim_rounds_elapsed <- rep(0, sim_iterations)
+    
+    for (i in 1:sim_iterations) {
+        
+        deck <- sample(rep(1:13, 4))
+        
+        game <- list(
+            cards_1 = deck[1:26],
+            cards_2 = deck[27:52],
+            stash_1 = c(),
+            stash_2 = c(),
+            winner = 0,
+            counter = 0)
+        
+        for (rounds in 1:1000) {
+            game <- play_game(game)
+        }
+        
+        sim_rounds_elapsed[i] <- game$counter
+    }
+    
+    sim_rounds_elapsed
 }
+
+simulation_results <- run_simulation(100000)
+simulation_results_df <- data.frame(sim_rounds_elapsed = simulation_results)
+
+library(ggplot2)
+
+ggplot(simulation_results_df, aes(x = sim_rounds_elapsed)) + geom_density()
+
