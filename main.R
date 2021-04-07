@@ -1,4 +1,7 @@
 library(ggplot2)
+library(progress)
+
+N_SIMULATIONS <- 100000
 
 play_game <- function(game) {
     if (game$winner == 0) {
@@ -7,10 +10,9 @@ play_game <- function(game) {
                 game$winner <- 1
             } else {
                 game$counter <- game$counter + 1
-                game$cards_1 <- c(game$cards_1[-1], game$stash_1, game$stash_2, game$cards_1[1], game$cards_2[1])
+                game$cards_1 <- c(game$cards_1[-1], sample(c(game$stash, game$cards_1[1], game$cards_2[1])))
                 game$cards_2 <- game$cards_2[-1]
-                game$stash_1 <- c()
-                game$stash_2 <- c()
+                game$stash <- c()
             }
         } else {
             if (game$cards_1[1] < game$cards_2[1]) {
@@ -18,10 +20,9 @@ play_game <- function(game) {
                     game$winner <- 2
                 } else {
                     game$counter <- game$counter + 1
-                    game$cards_2 <- c(game$cards_2[-1], game$stash_2, game$stash_1, game$cards_2[1], game$cards_1[1])
+                    game$cards_2 <- c(game$cards_2[-1], sample(c(game$stash, game$cards_2[1], game$cards_1[1])))
                     game$cards_1 <- game$cards_1[-1]
-                    game$stash_1 <- c()
-                    game$stash_2 <- c()
+                    game$stash <- c()
                 }
             } else {
                 if (length(game$cards_2) == 1) {
@@ -30,8 +31,7 @@ play_game <- function(game) {
                     if (length(game$cards_1) == 1) {
                         game$winner <- 2
                     } else {
-                        game$stash_1 <- c(game$stash_1, game$cards_1[1:2])
-                        game$stash_2 <- c(game$stash_2, game$cards_2[1:2])
+                        game$stash <- c(game$stash, game$cards_1[1:2], game$cards_2[1:2])
                         game$cards_1 <- game$cards_1[-(1:2)]
                         game$cards_2 <- game$cards_2[-(1:2)]
                         
@@ -55,7 +55,8 @@ play_game <- function(game) {
 run_simulation <- function(sim_iterations) {
     
     sim_rounds_elapsed <- rep(0, sim_iterations)
-    sim_winner <- rep(0, sim_iterations)
+    
+    pb <- progress_bar$new(total = sim_iterations)
     
     for (i in 1:sim_iterations) {
         
@@ -64,24 +65,25 @@ run_simulation <- function(sim_iterations) {
         game <- list(
             cards_1 = deck[1:26],
             cards_2 = deck[27:52],
-            stash_1 = c(),
-            stash_2 = c(),
+            stash = c(),
             winner = 0,
             counter = 0)
         
-        for (rounds in 1:10000) {
+        while(game$winner == 0) {
             game <- play_game(game)
         }
         
         sim_rounds_elapsed[i] <- game$counter
-        sim_winner[i] <- game$winner
+        pb$tick()
     }
     
-    data.frame(
-        sim_rounds_elapsed = sim_rounds_elapsed,
-        sim_winner = sim_winner)
+    data.frame(sim_rounds_elapsed = sim_rounds_elapsed)
 }
 
-simulation_results <- run_simulation(10000)
+
+simulation_results <- run_simulation(N_SIMULATIONS)
 
 ggplot(simulation_results, aes(x = sim_rounds_elapsed)) + geom_histogram(binwidth = 25)
+
+paste("Mean number of rounds:", round(mean(simulation_results$sim_rounds_elapsed)))
+paste("Median number of rounds:", round(median(simulation_results$sim_rounds_elapsed)))
